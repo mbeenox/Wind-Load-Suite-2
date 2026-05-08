@@ -2843,28 +2843,8 @@ function WindCalcInputs({ wssData, sideTab, onSideTab, onWssResult }) {
   const ccRoofAreas = CC_AREAS_ROOF;
   const ccWallAreas = CC_AREAS_WALL;
 
-  return (
-    <div className="flex h-screen bg-slate-950 text-slate-200" style={{ fontFamily:"'JetBrains Mono','Fira Code','SF Mono',monospace" }}>
-      {/* ── SIDEBAR ── */}
-      <aside className="w-72 shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col overflow-y-auto">
-        <div className="px-4 py-3 border-b border-slate-800 sticky top-0 bg-slate-900/90 backdrop-blur-sm z-10">
-          <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-sm font-bold text-slate-100">WIND LOADS</span>
-            <span className="text-[10px] text-sky-500 font-semibold">ASCE 7</span>
-          </div>
-          {/* Left sidebar tab strip */}
-          <div className="flex gap-0 rounded overflow-hidden border border-slate-700" style={{ fontSize: 10 }}>
-            <button
-              onClick={() => onSideTab("wss")}
-              style={{ flex:1, padding:"4px 0", background: sideTab==="wss" ? "#0369a1" : "#1e293b", color: sideTab==="wss" ? "#fff" : "#94a3b8", border:"none", cursor:"pointer", fontWeight: sideTab==="wss" ? 700 : 400, fontFamily:"inherit", fontSize:10 }}
-            >🌐 Site Hazards</button>
-            <button
-              onClick={() => onSideTab("wind")}
-              style={{ flex:1, padding:"4px 0", background: sideTab==="wind" ? "#0369a1" : "#1e293b", color: sideTab==="wind" ? "#fff" : "#94a3b8", border:"none", borderLeft:"1px solid #334155", cursor:"pointer", fontWeight: sideTab==="wind" ? 700 : 400, fontFamily:"inherit", fontSize:10 }}
-            >💨 Wind Inputs</button>
-          </div>
-        </div>
-        {sideTab === "wind" && (
+  function renderWindPanel() {
+    return (
         <div className="px-4 py-3 flex-1">
           <Divider label="Project" />
           {/* WSS lock banner */}
@@ -2980,7 +2960,31 @@ function WindCalcInputs({ wssData, sideTab, onSideTab, onWssResult }) {
           )}
         </div>
         </div>
-        )}
+    );
+  }
+
+  return (
+    <div className="flex h-screen bg-slate-950 text-slate-200" style={{ fontFamily:"'JetBrains Mono','Fira Code','SF Mono',monospace" }}>
+      {/* ── SIDEBAR ── */}
+      <aside className="w-72 shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col overflow-y-auto">
+        <div className="px-4 py-3 border-b border-slate-800 sticky top-0 bg-slate-900/90 backdrop-blur-sm z-10">
+          <div className="flex items-baseline gap-2 mb-2">
+            <span className="text-sm font-bold text-slate-100">WIND LOADS</span>
+            <span className="text-[10px] text-sky-500 font-semibold">ASCE 7</span>
+          </div>
+          {/* Left sidebar tab strip */}
+          <div className="flex gap-0 rounded overflow-hidden border border-slate-700" style={{ fontSize: 10 }}>
+            <button
+              onClick={() => onSideTab("wss")}
+              style={{ flex:1, padding:"4px 0", background: sideTab==="wss" ? "#0369a1" : "#1e293b", color: sideTab==="wss" ? "#fff" : "#94a3b8", border:"none", cursor:"pointer", fontWeight: sideTab==="wss" ? 700 : 400, fontFamily:"inherit", fontSize:10 }}
+            >🌐 Site Hazards</button>
+            <button
+              onClick={() => onSideTab("wind")}
+              style={{ flex:1, padding:"4px 0", background: sideTab==="wind" ? "#0369a1" : "#1e293b", color: sideTab==="wind" ? "#fff" : "#94a3b8", border:"none", borderLeft:"1px solid #334155", cursor:"pointer", fontWeight: sideTab==="wind" ? 700 : 400, fontFamily:"inherit", fontSize:10 }}
+            >💨 Wind Inputs</button>
+          </div>
+        </div>
+        {sideTab === "wind" && renderWindPanel()}
         {sideTab === "wss" && (
           <div className="px-4 py-3 flex-1 overflow-y-auto">
             <WSSLookup onWindResult={(d) => { onWssResult(d); onSideTab("wind"); }} />
