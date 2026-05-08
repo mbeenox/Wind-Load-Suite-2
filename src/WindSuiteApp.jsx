@@ -2788,14 +2788,9 @@ function WindCalcInputs({ wssData, sideTab, onSideTab, onWssResult }) {
   // ── WSS auto-populate ──
   const [wssLocked, setWssLocked] = useState(true); // true = grayed/read-only
   const [wssOverridden, setWssOverridden] = useState(false);
-  const prevWssRef = useRef(null);
 
   useEffect(() => {
     if (!wssData) return;
-    // Only apply if wssData actually changed (avoid re-locking on re-renders)
-    const key = JSON.stringify(wssData);
-    if (prevWssRef.current === key) return;
-    prevWssRef.current = key;
     up("V_mph", wssData.V_mph);
     up("risk_category", wssData.risk_category);
     up("code_version", wssData.code_version);
@@ -2983,12 +2978,12 @@ function WindCalcInputs({ wssData, sideTab, onSideTab, onWssResult }) {
             >💨 Wind Inputs</button>
           </div>
         </div>
-        {sideTab === "wind" && renderWindPanel()}
-        {sideTab === "wss" && (
+        <div style={{ display: sideTab === "wind" ? "block" : "none", flex: 1, overflowY: "auto" }}>{renderWindPanel()}</div>
+        <div style={{ display: sideTab === "wss" ? "block" : "none", flex: 1, overflowY: "auto" }}>{/* always mounted so WSS state persists */}
           <div className="px-4 py-3 flex-1 overflow-y-auto">
             <WSSLookup onWindResult={(d) => { onWssResult(d); onSideTab("wind"); }} />
           </div>
-        )}
+        </div>
       </aside>
 
       {/* ── MAIN ── */}
