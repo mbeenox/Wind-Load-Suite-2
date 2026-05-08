@@ -2845,7 +2845,7 @@ function WindCalcInputs({ wssData, sideTab, onSideTab, onWssResult }) {
 
   function renderWindPanel() {
     return (
-        <div className="px-4 py-3 flex-1">
+      <div className="px-4 py-3 flex-1">
           <Divider label="Project" />
           {/* WSS lock banner */}
           {wssActive && (
@@ -2958,7 +2958,6 @@ function WindCalcInputs({ wssData, sideTab, onSideTab, onWssResult }) {
           ) : (
             <div className="px-3 py-2 bg-slate-800/30 rounded text-xs font-mono text-slate-500">G = 0.85 (§26.11.1 fixed)</div>
           )}
-        </div>
         </div>
     );
   }
