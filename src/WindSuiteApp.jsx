@@ -4785,7 +4785,6 @@ function WSSLookup({ onWindResult }) {
   const [results, setResults] = useState({});
   const [running, setRunning] = useState(false);
   const [globalErr, setGlobalErr] = useState('');
-  const [sent, setSent] = useState(false);
 
   const siteClasses = standard === '7-22' ? WSS_SC_722 : WSS_SC_OLD;
 
@@ -4818,8 +4817,9 @@ function WSSLookup({ onWindResult }) {
       catch(e) { setResult(hazard,{error:e.message}); setStatus(hazard,'error'); }
     };
 
+    let windData = null;
     await Promise.all([
-      run('wind',    ()=>wssFetchWind(fLat,fLon,standard,riskCategory)),
+      run('wind',    async()=>{ const d=await wssFetchWind(fLat,fLon,standard,riskCategory); windData=d; return d; }),
       run('seismic', ()=>wssFetchSeismic(fLat,fLon,standard,riskCategory,siteClass)),
       run('snow',    async()=>{ const d=await wssFetchSnow(fLat,fLon,standard,riskCategory); if(d.siteElevFt!=null)setSiteElevFt(d.siteElevFt); return d; }),
       run('ice',     ()=>wssFetchIce(fLat,fLon,standard,riskCategory)),
@@ -4829,12 +4829,8 @@ function WSSLookup({ onWindResult }) {
       run('tornado', ()=>wssFetchTornado(fLat,fLon,riskCategory)),
     ]);
     setRunning(false);
-  }
-
-  function handleSend() {
-    const w = results.wind||{};
-    if (w.windSpeed!=null && onWindResult) {
-      onWindResult({ V_mph: Math.round(w.windSpeed), risk_category: riskCategory, code_version: standard });
+    if (windData && windData.windSpeed != null && onWindResult) {
+      onWindResult({ V_mph: Math.round(windData.windSpeed), risk_category: riskCategory, code_version: standard });
       setSent(true);
     }
   }
@@ -4880,10 +4876,7 @@ function WSSLookup({ onWindResult }) {
             {w.isHurricane && <span style={{ marginLeft:8, color:'#fbbf24' }}>⚠ Hurricane Region</span>}
             {w.isSpecialWind && <span style={{ marginLeft:8, color:'#fbbf24' }}>⚠ Special Wind Region</span>}
           </div>
-          <button onClick={handleSend} disabled={sent}
-            style={{ padding:'4px 10px', background:sent?'#166534':'#0369a1', color:'#fff', border:'none', borderRadius:4, cursor:sent?'default':'pointer', fontSize:10, fontWeight:700, fontFamily:'inherit', whiteSpace:'nowrap' }}>
-            {sent?'✓ Sent to Wind Inputs':'→ Send to Wind Inputs'}
-          </button>
+          <span style={{ fontSize:10, color:'#4ade80', fontWeight:700 }}>✓ Auto-sent to Wind Inputs</span>
           <button onClick={handleDownloadPDF}
             style={{ padding:'4px 10px', background:'#1e293b', color:'#7dd3fc', border:'1px solid #334155', borderRadius:4, cursor:'pointer', fontSize:10, fontWeight:700, fontFamily:'inherit', whiteSpace:'nowrap' }}>
             ↓ PDF Report
