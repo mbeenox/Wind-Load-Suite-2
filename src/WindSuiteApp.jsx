@@ -4154,14 +4154,15 @@ const WSS_PROXY = (url) => `/api/proxy?target=${encodeURIComponent(url)}`;
 // Fetch with 15-second timeout so a hung API call doesn't freeze the whole run
 async function wssFetch(url, opts) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
+  // Race the fetch against a 10s timeout promise
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
   try {
     const r = await fetch(url, { ...opts, signal: controller.signal });
-    clearTimeout(timer);
+    clearTimeout(timeoutId);
     return r;
   } catch (e) {
-    clearTimeout(timer);
-    if (e.name === 'AbortError') throw new Error('Request timed out after 15s');
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') throw new Error('Timed out (10s) — proxy may be unreachable');
     throw e;
   }
 }
