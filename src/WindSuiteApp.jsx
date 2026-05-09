@@ -4840,7 +4840,13 @@ function WSSLookup({ onWindResult }) {
 
     const run = async (hazard, fn) => {
       setStatus(hazard,'loading');
-      try { const d=await fn(); setResult(hazard,d); setStatus(hazard,'success'); }
+      try {
+        const d = await Promise.race([
+          fn(),
+          new Promise((_,rej) => setTimeout(() => rej(new Error('Hazard timed out (12s)')), 12000))
+        ]);
+        setResult(hazard,d); setStatus(hazard,'success');
+      }
       catch(e) { setResult(hazard,{error:e.message}); setStatus(hazard,'error'); }
     };
 
