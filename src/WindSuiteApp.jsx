@@ -4158,11 +4158,6 @@ async function wssFetch(url, opts) {
   try {
     const r = await fetch(url, { ...opts, signal: controller.signal });
     clearTimeout(timer);
-    // Surface proxy errors clearly
-    if (!r.ok) {
-      const txt = await r.text();
-      throw new Error(`HTTP ${r.status}: ${txt.slice(0, 200)}`);
-    }
     return r;
   } catch (e) {
     clearTimeout(timer);
@@ -4831,6 +4826,17 @@ function WSSLookup({ onWindResult }) {
       setResolvedAddr(dispAddr); setResolvedLat(fLat); setResolvedLon(fLon);
     } catch(e) { setGlobalErr(e.message); setRunning(false); return; }
 
+    // Quick proxy health check before running all hazards
+    try {
+      const testUrl = WSS_PROXY('https://nominatim.openstreetmap.org/search?q=test&format=json&limit=1');
+      const testR = await wssFetch(testUrl);
+      if (!testR.ok) throw new Error('Proxy returned ' + testR.status);
+    } catch(e) {
+      setGlobalErr('API proxy unreachable: ' + e.message + '. Check Vercel function logs.');
+      setRunning(false);
+      return;
+    }
+
     const run = async (hazard, fn) => {
       setStatus(hazard,'loading');
       try { const d=await fn(); setResult(hazard,d); setStatus(hazard,'success'); }
@@ -4838,16 +4844,20 @@ function WSSLookup({ onWindResult }) {
     };
 
     let windData = null;
-    await Promise.all([
-      run('wind',    async()=>{ const d=await wssFetchWind(fLat,fLon,standard,riskCategory); windData=d; return d; }),
-      run('seismic', ()=>wssFetchSeismic(fLat,fLon,standard,riskCategory,siteClass)),
-      run('snow',    async()=>{ const d=await wssFetchSnow(fLat,fLon,standard,riskCategory); if(d.siteElevFt!=null)setSiteElevFt(d.siteElevFt); return d; }),
-      run('ice',     ()=>wssFetchIce(fLat,fLon,standard,riskCategory)),
-      run('rain',    ()=>wssFetchRain(fLat,fLon)),
-      run('flood',   ()=>wssFetchFlood(fLat,fLon)),
-      run('tsunami', ()=>wssFetchTsunami(fLat,fLon,standard)),
-      run('tornado', ()=>wssFetchTornado(fLat,fLon,riskCategory)),
-    ]);
+    try {
+      await Promise.all([
+        run('wind',    async()=>{ const d=await wssFetchWind(fLat,fLon,standard,riskCategory); windData=d; return d; }),
+        run('seismic', ()=>wssFetchSeismic(fLat,fLon,standard,riskCategory,siteClass)),
+        run('snow',    async()=>{ const d=await wssFetchSnow(fLat,fLon,standard,riskCategory); if(d.siteElevFt!=null)setSiteElevFt(d.siteElevFt); return d; }),
+        run('ice',     ()=>wssFetchIce(fLat,fLon,standard,riskCategory)),
+        run('rain',    ()=>wssFetchRain(fLat,fLon)),
+        run('flood',   ()=>wssFetchFlood(fLat,fLon)),
+        run('tsunami', ()=>wssFetchTsunami(fLat,fLon,standard)),
+        run('tornado', ()=>wssFetchTornado(fLat,fLon,riskCategory)),
+      ]);
+    } catch(e) {
+      setGlobalErr('Lookup error: ' + e.message);
+    }
     setRunning(false);
     if (windData && windData.windSpeed != null && onWindResult) {
       onWindResult({ V_mph: Math.round(windData.windSpeed), risk_category: riskCategory, code_version: standard });
