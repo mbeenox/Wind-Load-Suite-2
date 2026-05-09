@@ -2978,10 +2978,10 @@ function WindCalcInputs({ wssData, sideTab, onSideTab, onWssResult }) {
             >💨 Wind Inputs</button>
           </div>
         </div>
-        <div style={{ display: sideTab === "wind" ? "block" : "none", flex: 1, overflowY: "auto" }}>{renderWindPanel()}</div>
-        <div style={{ display: sideTab === "wss" ? "block" : "none", flex: 1, overflowY: "auto" }}>{/* always mounted so WSS state persists */}
+        <div style={{ display: sideTab === "wind" ? "flex" : "none", flex: 1, overflowY: "auto", flexDirection: "column" }}>{renderWindPanel()}</div>
+        <div style={{ display: sideTab === "wss" ? "flex" : "none", flex: 1, overflowY: "auto", flexDirection: "column" }}>{/* always mounted so WSS state persists */}
           <div className="px-4 py-3 flex-1 overflow-y-auto">
-            <WSSLookup onWindResult={(d) => { onWssResult(d); onSideTab("wind"); }} />
+            <WSSLookup onWindResult={(d) => { onWssResult(d); }} />
           </div>
         </div>
       </aside>
@@ -4151,10 +4151,24 @@ function WindCalcInputs({ wssData, sideTab, onSideTab, onWssResult }) {
 
 const WSS_PROXY = (url) => `/api/proxy?target=${encodeURIComponent(url)}`;
 
+// Fetch with 15-second timeout so a hung API call doesn't freeze the whole run
+async function wssFetch(url, opts) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const r = await fetch(url, { ...opts, signal: controller.signal });
+    clearTimeout(timer);
+    return r;
+  } catch (e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
 async function wssGeocode(address) {
   try {
     const censusUrl = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`;
-    const r = await fetch(WSS_PROXY(censusUrl));
+    const r = await wssFetch(WSS_PROXY(censusUrl));
     const data = await r.json();
     const matches = data?.result?.addressMatches;
     if (matches?.length > 0) {
@@ -4162,7 +4176,7 @@ async function wssGeocode(address) {
       return { lat: parseFloat(m.coordinates.y), lon: parseFloat(m.coordinates.x), displayName: m.matchedAddress };
     }
   } catch (e) {}
-  const r = await fetch(WSS_PROXY(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`));
+  const r = await wssFetch(WSS_PROXY(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`));
   const data = await r.json();
   if (!data.length) throw new Error('Address not found. Try adding city and state, or use Lat/Lon.');
   return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), displayName: data[0].display_name };
@@ -4171,12 +4185,12 @@ async function wssGeocode(address) {
 function wssArcgisGetSamples(service, lat, lon) {
   const geom = JSON.stringify({ x: lon, y: lat, spatialReference: { wkid: 4326 } });
   const url = `https://gis.asce.org/arcgis/rest/services/${service}/getSamples?geometry=${encodeURIComponent(geom)}&geometryType=esriGeometryPoint&returnFirstValueOnly=true&f=json`;
-  return fetch(WSS_PROXY(url)).then(r => r.json());
+  return wssFetch(WSS_PROXY(url)).then(r => r.json());
 }
 function wssArcgisIdentify(service, lat, lon, layers = 'all') {
   const ext = `${lon-0.5},${lat-0.5},${lon+0.5},${lat+0.5}`;
   const url = `https://gis.asce.org/arcgis/rest/services/${service}/identify?geometry=${lon},${lat}&geometryType=esriGeometryPoint&sr=4326&layers=${layers}&tolerance=3&mapExtent=${ext}&imageDisplay=800,600,96&returnGeometry=false&f=json`;
-  return fetch(WSS_PROXY(url)).then(r => r.json());
+  return wssFetch(WSS_PROXY(url)).then(r => r.json());
 }
 
 // Seismic
@@ -4184,7 +4198,7 @@ const WSS_SEISMIC_SLUG = { '7-22': 'asce7-22', '7-16': 'asce7-16', '7-10': 'asce
 async function wssFetchSeismic(lat, lon, standard, riskCategory, siteClass) {
   const slug = WSS_SEISMIC_SLUG[standard];
   const url = `https://earthquake.usgs.gov/ws/designmaps/${slug}.json?latitude=${lat}&longitude=${lon}&riskCategory=${riskCategory}&siteClass=${siteClass}&title=WSS`;
-  const r = await fetch(WSS_PROXY(url));
+  const r = await wssFetch(WSS_PROXY(url));
   const data = await r.json();
   if (data.response?.data) {
     const d = data.response.data;
@@ -4265,7 +4279,7 @@ async function wssFetchIce(lat, lon, standard, riskCategory) {
 
 // Rain
 async function wssFetchRain(lat, lon) {
-  const r = await fetch(WSS_PROXY(`https://hdsc.nws.noaa.gov/cgi-bin/hdsc/new/cgi_readH5.py?lat=${lat}&lon=${lon}&type=pf&data=intensity&units=english&series=pds`));
+  const r = await wssFetch(WSS_PROXY(`https://hdsc.nws.noaa.gov/cgi-bin/hdsc/new/cgi_readH5.py?lat=${lat}&lon=${lon}&type=pf&data=intensity&units=english&series=pds`));
   const text = await r.text();
   const match = text.match(/quantiles\s*=\s*(\[[\s\S]+?\]);/);
   if (!match) return { error: 'No rain data' };
@@ -4279,7 +4293,7 @@ async function wssFetchRain(lat, lon) {
 
 // Flood
 async function wssFetchFlood(lat, lon) {
-  const r = await fetch(WSS_PROXY(`https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE,STATIC_BFE,V_DATUM,ZONE_SUBTY,SFHA_TF&returnGeometry=false&f=json`));
+  const r = await wssFetch(WSS_PROXY(`https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE,STATIC_BFE,V_DATUM,ZONE_SUBTY,SFHA_TF&returnGeometry=false&f=json`));
   const data = await r.json();
   const f = (data.features||[])[0];
   if (!f) return { floodZone:'Not Available', bfe:null, datum:null, sfha:false, subtype:null };
@@ -4355,7 +4369,7 @@ function WssAutocomplete({ value, onChange, onSelect }) {
   async function fetchSugg(q) {
     if (q.length < 3) { setSugg([]); setOpen(false); return; }
     setLoading(true);
-    try { const r = await fetch(WSS_PROXY(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1&countrycodes=us`)); const d = await r.json(); setSugg(d||[]); setOpen((d||[]).length>0); setActiveIdx(-1); } catch(e) { setSugg([]); setOpen(false); }
+    try { const r = await wssFetch(WSS_PROXY(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1&countrycodes=us`)); const d = await r.json(); setSugg(d||[]); setOpen((d||[]).length>0); setActiveIdx(-1); } catch(e) { setSugg([]); setOpen(false); }
     setLoading(false);
   }
   function sel(item) { onChange(item.display_name); setSugg([]); setOpen(false); onSelect({ lat:parseFloat(item.lat), lon:parseFloat(item.lon), displayName:item.display_name }); }
@@ -4415,7 +4429,7 @@ function WssMapPicker({ onLocationSelect, syncLocation }) {
         const { lat, lng } = e.latlng;
         if (markerRef.current) { markerRef.current.setLatLng([lat,lng]); } else { markerRef.current = L.marker([lat,lng],{icon}).addTo(map); }
         let dn = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-        try { const r = await fetch(WSS_PROXY(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)); const d = await r.json(); if (d.display_name) dn = d.display_name; } catch(e) {}
+        try { const r = await wssFetch(WSS_PROXY(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)); const d = await r.json(); if (d.display_name) dn = d.display_name; } catch(e) {}
         setPinLabel(dn);
         onLocationSelect({ lat, lon:lng, displayName:dn });
       });
@@ -5032,7 +5046,7 @@ export default function WindSuiteApp() {
 
   function handleWssResult(data) {
     setWssData(data);
-    setSideTab('wind');
+    // Stay on WSS tab so user can see results; values populate Wind Inputs silently
   }
 
   return (
