@@ -4152,19 +4152,9 @@ function WindCalcInputs({ wssData, sideTab, onSideTab, onWssResult }) {
 const WSS_PROXY = (url) => `/api/proxy?target=${encodeURIComponent(url)}`;
 
 // Fetch with 15-second timeout so a hung API call doesn't freeze the whole run
+// wssFetch: thin wrapper kept for compatibility
 async function wssFetch(url, opts) {
-  const controller = new AbortController();
-  // Race the fetch against a 10s timeout promise
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-  try {
-    const r = await fetch(url, { ...opts, signal: controller.signal });
-    clearTimeout(timeoutId);
-    return r;
-  } catch (e) {
-    clearTimeout(timeoutId);
-    if (e.name === 'AbortError') throw new Error('Timed out (10s) — proxy may be unreachable');
-    throw e;
-  }
+  return fetch(url, opts);
 }
 
 async function wssGeocode(address) {
@@ -4808,7 +4798,7 @@ function WSSLookup({ onWindResult }) {
   function setResult(h, d) { setResults(p=>({...p,[h]:d})); }
 
   async function handleRun() {
-    setGlobalErr(''); setResults({}); setStatuses({}); setSiteElevFt(null); setRunning(true); setSent(false);
+    setGlobalErr(''); setResults({}); setStatuses({}); setSiteElevFt(null); setRunning(true);
     let fLat, fLon, dispAddr;
     try {
       if (locMode==='latlon') {
@@ -4827,26 +4817,9 @@ function WSSLookup({ onWindResult }) {
       setResolvedAddr(dispAddr); setResolvedLat(fLat); setResolvedLon(fLon);
     } catch(e) { setGlobalErr(e.message); setRunning(false); return; }
 
-    // Quick proxy health check before running all hazards
-    try {
-      const testUrl = WSS_PROXY('https://nominatim.openstreetmap.org/search?q=test&format=json&limit=1');
-      const testR = await wssFetch(testUrl);
-      if (!testR.ok) throw new Error('Proxy returned ' + testR.status);
-    } catch(e) {
-      setGlobalErr('API proxy unreachable: ' + e.message + '. Check Vercel function logs.');
-      setRunning(false);
-      return;
-    }
-
     const run = async (hazard, fn) => {
       setStatus(hazard,'loading');
-      try {
-        const d = await Promise.race([
-          fn(),
-          new Promise((_,rej) => setTimeout(() => rej(new Error('Hazard timed out (12s)')), 12000))
-        ]);
-        setResult(hazard,d); setStatus(hazard,'success');
-      }
+      try { const d=await fn(); setResult(hazard,d); setStatus(hazard,'success'); }
       catch(e) { setResult(hazard,{error:e.message}); setStatus(hazard,'error'); }
     };
 
@@ -4868,7 +4841,6 @@ function WSSLookup({ onWindResult }) {
     setRunning(false);
     if (windData && windData.windSpeed != null && onWindResult) {
       onWindResult({ V_mph: Math.round(windData.windSpeed), risk_category: riskCategory, code_version: standard });
-      setSent(true);
     }
   }
 
@@ -4903,7 +4875,7 @@ function WSSLookup({ onWindResult }) {
 
       {/* Send-to-Wind banner */}
       {allDone && w.windSpeed!=null && (
-        <div style={{ marginBottom:10, padding:'8px 10px', background: sent?'#052e16':'#0c2040', border:`1px solid ${sent?'#166534':'#1e4d7b'}`, borderRadius:6, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+        <div style={{ marginBottom:10, padding:'8px 10px', background:'#052e16', border:'1px solid #166534', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
           <div style={{ fontSize:10 }}>
             <span style={{ fontWeight:700, color:'#7dd3fc' }}>V = {Math.round(w.windSpeed)} mph</span>
             <span style={{ color:'#475569', margin:'0 4px' }}>·</span>
