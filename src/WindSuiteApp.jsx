@@ -4528,7 +4528,7 @@ function wssGeneratePDF(inputs, results) {
     startY: y,
     head: [],
     body: [
-      ['Address', inputs.address || 'N/A', 'Standard', `ASCE 7-${inputs.standard}`],
+      ['Address', inputs.address || 'N/A', 'Standard', `ASCE ${inputs.standard}`],
       ['Latitude', latStr, 'Risk Category', `RC ${inputs.riskCategory}`],
       ['Longitude', lonStr, 'Site Class', inputs.siteClass],
       ['Site Elevation', elevFt, 'Report Date', new Date().toLocaleDateString()],
@@ -4551,7 +4551,7 @@ function wssGeneratePDF(inputs, results) {
       startY: y,
       head: [['Parameter', 'Value', 'Notes']],
       body: [
-        ['Ultimate Wind Speed (V)', w.windSpeed ? `${wssPdfFmt(w.windSpeed, 0)} mph` : 'N/A', `ASCE 7-${inputs.standard} Fig. 26.5-1`],
+        ['Ultimate Wind Speed (V)', w.windSpeed ? `${wssPdfFmt(w.windSpeed, 0)} mph` : 'N/A', `ASCE ${inputs.standard} Fig. 26.5-1`],
         ['Hurricane-Prone Region', w.isHurricane ? 'YES' : 'NO', w.isHurricane ? 'Wind-borne debris requirements apply' : ''],
         ['Special Wind Region', w.isSpecialWind ? 'YES — See Authority Having Jurisdiction' : 'NO', w.isSpecialWind ? 'Site-specific study may be required' : ''],
       ],
@@ -4595,7 +4595,7 @@ function wssGeneratePDF(inputs, results) {
       startY: y,
       head: [['Parameter', 'Value', 'Notes']],
       body: [
-        ['Ground Snow Load (pg)', sn.groundSnowLoad != null ? `${Math.round(sn.groundSnowLoad)} psf` : 'N/A', `ASCE 7-${inputs.standard}`],
+        ['Ground Snow Load (pg)', sn.groundSnowLoad != null ? `${Math.round(sn.groundSnowLoad)} psf` : 'N/A', `ASCE ${inputs.standard}`],
         ['Winter Wind Parameter', sn.winterWind ?? 'N/A', ''],
         ['Special Case', sn.specialCase ? 'YES — Site study required' : 'NO', ''],
       ],
@@ -4881,7 +4881,7 @@ function WSSLookup({ onWindResult }) {
             <span style={{ color:'#475569', margin:'0 4px' }}>·</span>
             <span style={{ color:'#cbd5e1' }}>RC {riskCategory}</span>
             <span style={{ color:'#475569', margin:'0 4px' }}>·</span>
-            <span style={{ color:'#cbd5e1' }}>ASCE 7-{standard}</span>
+            <span style={{ color:'#cbd5e1' }}>ASCE {standard}</span>
             {w.isHurricane && <span style={{ marginLeft:8, color:'#fbbf24' }}>⚠ Hurricane Region</span>}
             {w.isSpecialWind && <span style={{ marginLeft:8, color:'#fbbf24' }}>⚠ Special Wind Region</span>}
           </div>
@@ -4912,7 +4912,7 @@ function WSSLookup({ onWindResult }) {
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, marginBottom:8 }}>
         {inp('ASCE Standard',
           <select style={iStyle} value={standard} onChange={e=>{ setStandard(e.target.value); setSiteClass('D'); }}>
-            {WSS_STDS.map(s=><option key={s} value={s}>ASCE 7-{s}</option>)}
+            {WSS_STDS.map(s=><option key={s} value={s}>ASCE {s}</option>)}
           </select>
         )}
         {inp('Risk Category',
