@@ -4158,9 +4158,15 @@ async function wssFetch(url, opts) {
   try {
     const r = await fetch(url, { ...opts, signal: controller.signal });
     clearTimeout(timer);
+    // Surface proxy errors clearly
+    if (!r.ok) {
+      const txt = await r.text();
+      throw new Error(`HTTP ${r.status}: ${txt.slice(0, 200)}`);
+    }
     return r;
   } catch (e) {
     clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('Request timed out after 15s');
     throw e;
   }
 }
